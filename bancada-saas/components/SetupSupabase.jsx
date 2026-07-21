@@ -11,12 +11,11 @@ const cores = {
 
 export default function SetupSupabase({ titulo = "Configure o Supabase" }) {
   const passos = [
-    "Crie um projeto em https://supabase.com/dashboard",
-    "Settings → API: copie Project URL e anon public key",
-    "Em bancada-saas/, copie .env.example → .env.local e preencha as duas chaves",
-    "SQL Editor: execute supabase/migrations/001_init.sql",
-    "Authentication → URL Configuration: Site URL http://localhost:3000 e redirect http://localhost:3000/auth/callback",
-    "Reinicie o servidor (npm run dev)",
+    "Crie um access token em https://supabase.com/dashboard/account/tokens",
+    'No terminal: export SUPABASE_ACCESS_TOKEN="sbp_..." && npm run supabase:configurar',
+    "Ou preencha .env.local manualmente (URL + anon key) e rode 001_init.sql no SQL Editor",
+    "Authentication → URL: Site URL http://localhost:3002 e redirect .../auth/callback",
+    "Reinicie o servidor (npm run dev -- -p 3002)",
   ];
 
   return (
