@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { FichaForm } from "@/components/FichaForm";
@@ -10,6 +11,9 @@ type Props = { params: Promise<{ id: string }> };
 export const metadata = { title: "Editar ficha técnica" };
 
 export default async function EditarFichaPage({ params }: Props) {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const { id } = await params;
   const ficha = await prisma.fichaTecnica.findUnique({
     where: { id },
@@ -19,7 +23,9 @@ export default async function EditarFichaPage({ params }: Props) {
     },
   });
 
-  if (!ficha || !ficha.ativo) notFound();
+  if (!ficha || !ficha.ativo || ficha.organizationId !== session.user.organizationId) {
+    notFound();
+  }
 
   return (
     <div>

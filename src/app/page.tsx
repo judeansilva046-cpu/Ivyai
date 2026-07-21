@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { custoInsumos } from "@/lib/calculations";
@@ -7,30 +9,36 @@ import { StatBlock } from "@/components/StatBlock";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [fichas, etiquetas, insumos] = await Promise.all([
-    prisma.fichaTecnica.findMany({
-      where: { ativo: true },
-      include: {
-        itens: { include: { insumo: true } },
-        precificacao: true,
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    }),
-    prisma.etiquetaValidade.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    prisma.insumo.count({ where: { ativo: true } }),
-  ]);
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+  const orgId = session.user.organizationId;
 
-  const totalFichas = await prisma.fichaTecnica.count({ where: { ativo: true } });
-  const totalEtiquetas = await prisma.etiquetaValidade.count();
+  const [fichas, etiquetas, insumosCount, totalFichas, totalEtiquetas] =
+    await Promise.all([
+      prisma.fichaTecnica.findMany({
+        where: { ativo: true, organizationId: orgId },
+        include: {
+          itens: { include: { insumo: true } },
+          precificacao: true,
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+      }),
+      prisma.etiquetaValidade.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.insumo.count({ where: { ativo: true, organizationId: orgId } }),
+      prisma.fichaTecnica.count({ where: { ativo: true, organizationId: orgId } }),
+      prisma.etiquetaValidade.count({ where: { organizationId: orgId } }),
+    ]);
 
+  const comPreco = fichas.filter((f) => f.precificacao);
   const ticketMedio =
-    fichas.length > 0
-      ? fichas.reduce((acc, f) => acc + (f.precificacao?.precoPraticado || 0), 0) /
-        fichas.filter((f) => f.precificacao).length || 0
+    comPreco.length > 0
+      ? comPreco.reduce((acc, f) => acc + (f.precificacao?.precoPraticado || 0), 0) /
+        comPreco.length
       : 0;
 
   const modules = [
@@ -68,20 +76,20 @@ export default async function HomePage() {
     <div>
       <section className="dh-animate-in mb-10">
         <p className="mb-2 text-sm font-semibold uppercase tracking-[0.14em] text-dh-sage">
-          DeliveryHub
+          {session.user.organizationName}
         </p>
         <h1 className="font-display max-w-2xl text-4xl font-semibold tracking-tight text-dh-ink sm:text-5xl">
-          Operação de cozinha e delivery em um só lugar
+          Olá, {session.user.name.split(" ")[0]}
         </h1>
         <p className="mt-4 max-w-xl text-lg text-dh-muted">
-          Insumos, fichas técnicas, precificação e etiquetas de validade para
-          restaurantes, cozinhas e confeitarias.
+          Insumos, fichas técnicas, precificação e etiquetas de validade da sua
+          operação de delivery.
         </p>
       </section>
 
       <section className="dh-animate-in-delay-1 mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatBlock label="Fichas técnicas" value={String(totalFichas)} />
-        <StatBlock label="Insumos cadastrados" value={String(insumos)} />
+        <StatBlock label="Insumos cadastrados" value={String(insumosCount)} />
         <StatBlock label="Etiquetas geradas" value={String(totalEtiquetas)} />
         <StatBlock
           label="Ticket médio"

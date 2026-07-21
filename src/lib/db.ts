@@ -1,17 +1,13 @@
 // DeliveryHub — cliente Prisma com adapter SQLite
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
 function createPrismaClient() {
-  const dbUrl =
-    process.env.DATABASE_URL ??
-    `file:${path.join(process.cwd(), "prisma", "deliveryhub.db")}`;
-
+  const dbUrl = process.env.DATABASE_URL ?? "file:./prisma/deliveryhub.db";
   const adapter = new PrismaBetterSqlite3({ url: dbUrl });
   return new PrismaClient({ adapter });
 }

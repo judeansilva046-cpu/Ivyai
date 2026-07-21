@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useState } from "react";
 
 const nav = [
@@ -55,12 +56,29 @@ function NavIcon({ name }: { name: (typeof nav)[number]["icon"] }) {
   }
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type UserInfo = {
+  name: string;
+  email: string;
+  organizationName: string;
+} | null;
+
+export function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: UserInfo;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const isAuthPage = pathname === "/login" || pathname === "/registro";
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  if (isAuthPage) {
+    return <div className="min-h-screen px-4">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen">
@@ -74,13 +92,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="font-display text-lg font-semibold tracking-tight text-dh-ink">
                 DeliveryHub
               </p>
-              <p className="hidden text-[11px] text-dh-muted lg:block">
-                Operação de cozinha e delivery
+              <p className="hidden max-w-[180px] truncate text-[11px] text-dh-muted lg:block">
+                {user?.organizationName || "Operação de cozinha e delivery"}
               </p>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-0.5 lg:flex">
+          <nav className="hidden items-center gap-0.5 xl:flex">
             {nav.map((item) => (
               <Link
                 key={item.href}
@@ -97,18 +115,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <button
-            type="button"
-            className="btn btn-secondary lg:hidden"
-            aria-label="Abrir menu"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? "Fechar" : "Menu"}
-          </button>
+          <div className="flex items-center gap-2">
+            {user && (
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-medium text-dh-ink">{user.name}</p>
+                <p className="text-[11px] text-dh-muted">{user.email}</p>
+              </div>
+            )}
+            {user && (
+              <button
+                type="button"
+                className="btn btn-secondary hidden sm:inline-flex"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+              >
+                Sair
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary xl:hidden"
+              aria-label="Abrir menu"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? "Fechar" : "Menu"}
+            </button>
+          </div>
         </div>
 
         {open && (
-          <nav className="dh-fade border-t border-dh-line px-4 py-3 lg:hidden">
+          <nav className="dh-fade border-t border-dh-line px-4 py-3 xl:hidden">
             <div className="flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
@@ -125,6 +160,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              {user && (
+                <button
+                  type="button"
+                  className="btn btn-secondary mt-2"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                >
+                  Sair
+                </button>
+              )}
             </div>
           </nav>
         )}

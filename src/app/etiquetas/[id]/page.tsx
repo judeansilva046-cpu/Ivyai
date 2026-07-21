@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDateTime } from "@/lib/format";
@@ -17,13 +18,18 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function EtiquetaDetailPage({ params }: Props) {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const { id } = await params;
   const etiqueta = await prisma.etiquetaValidade.findUnique({
     where: { id },
     include: { ficha: true },
   });
 
-  if (!etiqueta) notFound();
+  if (!etiqueta || etiqueta.organizationId !== session.user.organizationId) {
+    notFound();
+  }
 
   const copies = Array.from({ length: Math.min(etiqueta.quantidade, 12) });
 

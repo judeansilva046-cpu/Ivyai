@@ -1,0 +1,14 @@
+# DeliveryHub — exemplo Caddy para domínio com HTTPS automático
+# Ajuste o domínio e aponte o DNS para o servidor.
+
+deliveryhub.seudominio.com.br {
+  encode gzip
+  reverse_proxy deliveryhub:3000
+
+  header {
+    # Segurança básica
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Frame-Options DENY
+  }
+}

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { FichasList } from "@/components/FichasList";
@@ -8,8 +10,12 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Ficha Técnica" };
 
 export default async function FichasPage() {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+  const orgId = session.user.organizationId;
+
   const fichas = await prisma.fichaTecnica.findMany({
-    where: { ativo: true },
+    where: { ativo: true, organizationId: orgId },
     include: {
       itens: { include: { insumo: true } },
       precificacao: true,

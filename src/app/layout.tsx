@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { SessionProvider } from "@/components/SessionProvider";
 import { AppShell } from "@/components/AppShell";
+import { auth } from "@/auth";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -25,15 +27,31 @@ export const metadata: Metadata = {
   applicationName: "DeliveryHub",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="pt-BR" className={`${outfit.variable} ${fraunces.variable} h-full`}>
       <body className="min-h-full antialiased">
-        <AppShell>{children}</AppShell>
+        <SessionProvider>
+          <AppShell
+            user={
+              session?.user
+                ? {
+                    name: session.user.name,
+                    email: session.user.email,
+                    organizationName: session.user.organizationName,
+                  }
+                : null
+            }
+          >
+            {children}
+          </AppShell>
+        </SessionProvider>
       </body>
     </html>
   );

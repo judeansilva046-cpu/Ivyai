@@ -2,12 +2,15 @@
 
 Sistema web para restaurantes, cozinhas, confeitarias e operações de delivery.
 
-**DeliveryHub** integra os módulos:
+**DeliveryHub** integra:
 
-1. **Insumos** — cadastro e atualização de matérias-primas e custos
-2. **Ficha Técnica** — cadastro de preparos com insumos, rendimento, modo de preparo e validade
-3. **Precificação** — cálculo de custo, margem, impostos e preço sugerido/praticado
-4. **Etiqueta de Validade** — geração e impressão de etiquetas com lote, produção e validade
+1. **Autenticação** — login, registro e isolamento por operação/restaurante
+2. **Insumos** — matérias-primas e custos
+3. **Ficha Técnica** — preparos com rendimento e validade
+4. **Precificação** — custo, margem e preço de venda
+5. **Etiqueta de Validade** — geração e impressão
+
+Pronto para hospedar no seu domínio (Docker + HTTPS). Veja [DEPLOY.md](./DEPLOY.md).
 
 ## Nome técnico
 
@@ -16,95 +19,58 @@ O nome técnico do projeto é **deliveryhub** (package, banco, scripts e documen
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS
+- Auth.js (NextAuth v5) com credenciais
 - Prisma + SQLite (`prisma/deliveryhub.db`)
+- Docker Compose para produção
 - Interface em português (pt-BR)
 
-## Como rodar
+## Como rodar (local)
 
 ```bash
-# Instalar dependências
 npm install
-
-# Configurar banco (já incluso .env.example)
 cp .env.example .env
-
-# Migrar e popular dados de exemplo
+# Gere AUTH_SECRET: openssl rand -base64 32
 npm run deliveryhub:setup
-
-# Ambiente de desenvolvimento
 npm run dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000).
 
+**Conta demo (seed)**
+
+- E-mail: `admin@deliveryhub.local`
+- Senha: `deliveryhub123`
+
+Ou crie uma operação nova em `/registro`.
+
+## Hospedar no domínio
+
+```bash
+cp .env.example .env
+# Defina AUTH_SECRET e AUTH_URL=https://seu-dominio.com.br
+docker compose up -d --build
+```
+
+Guia completo com Caddy/Nginx e HTTPS: **[DEPLOY.md](./DEPLOY.md)**
+
+Healthcheck: `GET /api/health`
+
 ## Scripts DeliveryHub
 
 | Script | Descrição |
 |--------|-----------|
-| `npm run dev` | Servidor de desenvolvimento |
+| `npm run dev` | Desenvolvimento |
 | `npm run build` | Build de produção |
 | `npm run start` | Servidor de produção |
 | `npm run lint` | ESLint |
-| `npm run db:migrate` | Rodar migrations |
-| `npm run db:seed` | Popular banco com dados de exemplo |
-| `npm run db:reset` | Resetar banco DeliveryHub |
+| `npm run db:migrate` | Migrations (dev) |
+| `npm run db:deploy` | Migrations (produção) |
+| `npm run db:seed` | Dados de exemplo |
 | `npm run deliveryhub:setup` | Migrate + seed |
 
-## Módulos
+## Segurança multi-operação
 
-### Insumos (`/insumos`)
-
-- CRUD de matérias-primas (nome, unidade, custo, categoria)
-- Busca e filtro por categoria
-- Ao alterar o custo, o DeliveryHub recalcula o preço sugerido das fichas vinculadas
-
-### Ficha Técnica (`/fichas`)
-
-- CRUD de fichas com lista de insumos e perda percentual
-- Cadastro rápido de insumos ou vínculo com o módulo Insumos
-- Busca por nome/categoria
-- Rendimento, validade em horas e modo de preparo
-- Ao salvar, cria/atualiza a precificação vinculada
-
-### Precificação (`/precificacao`)
-
-- Custo de insumos + embalagem + mão de obra + operacional
-- Margem %, impostos % e taxa de delivery
-- Preço sugerido e preço praticado editáveis
-
-### Etiqueta de Validade (`/etiquetas`)
-
-- Vínculo opcional com ficha técnica
-- Cálculo automático da validade pelas horas da ficha
-- Busca por produto, lote ou responsável
-- Visual pronto para impressão (Ctrl/Cmd+P)
-
-## Banco de dados
-
-O banco SQLite do DeliveryHub fica em:
-
-```
-prisma/deliveryhub.db
-```
-
-Variável de ambiente:
-
-```
-DATABASE_URL="file:./prisma/deliveryhub.db"
-```
-
-## Estrutura
-
-```
-src/
-  app/           # Páginas e API routes do DeliveryHub
-  components/    # Componentes de UI
-  lib/           # db, cálculos e formatação
-prisma/
-  schema.prisma  # Schema DeliveryHub
-  seed.ts        # Dados de exemplo
-  deliveryhub.db # Banco SQLite (gerado localmente)
-```
+Cada conta cria uma **organização**. Insumos, fichas, precificação e etiquetas ficam isolados por organização.
 
 ## Licença
 

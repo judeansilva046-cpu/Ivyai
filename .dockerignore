@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.local
+*.db
+*.db-*
+data
+backup-deliveryhub
+README.md
+DEPLOY.md
+AGENTS.md
+CLAUDE.md

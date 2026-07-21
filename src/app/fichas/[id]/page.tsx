@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { StatBlock } from "@/components/StatBlock";
@@ -22,6 +23,9 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function FichaDetailPage({ params }: Props) {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const { id } = await params;
   const ficha = await prisma.fichaTecnica.findUnique({
     where: { id },
@@ -32,7 +36,9 @@ export default async function FichaDetailPage({ params }: Props) {
     },
   });
 
-  if (!ficha || !ficha.ativo) notFound();
+  if (!ficha || !ficha.ativo || ficha.organizationId !== session.user.organizationId) {
+    notFound();
+  }
 
   const itensCusto = ficha.itens.map((i) => ({
     quantidade: i.quantidade,

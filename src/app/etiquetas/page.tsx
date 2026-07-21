@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { EtiquetasList } from "@/components/EtiquetasList";
@@ -7,7 +9,11 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Etiqueta de Validade" };
 
 export default async function EtiquetasPage() {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const etiquetas = await prisma.etiquetaValidade.findMany({
+    where: { organizationId: session.user.organizationId },
     include: { ficha: true },
     orderBy: { createdAt: "desc" },
   });
