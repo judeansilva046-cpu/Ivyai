@@ -47,23 +47,23 @@ export default async function HomePage() {
 
   const modules = [
     {
-      href: "/insumos",
-      title: "Insumos",
-      description: "Cadastre matérias-primas e custos da cozinha.",
-      cta: "Cadastrar insumos",
+      href: "/fichas",
+      title: "Ficha Técnica",
+      description: "Crie receitas, calcule custos e preço sugerido.",
+      cta: "Abrir fichas",
       step: "1",
     },
     {
-      href: "/fichas",
-      title: "Ficha Técnica",
-      description: "Monte preparos com rendimento e validade.",
-      cta: "Criar ficha",
+      href: "/insumos",
+      title: "Insumos",
+      description: "Atualize preços das matérias-primas.",
+      cta: "Gerenciar insumos",
       step: "2",
     },
     {
       href: "/precificacao",
       title: "Precificação",
-      description: "Defina margem e preço de venda.",
+      description: "Ajuste margem, impostos e preço praticado.",
       cta: "Precificar",
       step: "3",
     },
@@ -85,26 +85,24 @@ export default async function HomePage() {
         <h1 className="font-display max-w-2xl text-4xl font-semibold tracking-tight text-dh-ink sm:text-5xl">
           Olá, {session.user.name.split(" ")[0]}
         </h1>
-        <p className="mt-4 max-w-xl text-lg text-dh-muted">
-          {isEmpty
-            ? "Sua operação está limpa. Comece cadastrando os insumos e depois monte as fichas técnicas."
-            : "Insumos, fichas técnicas, precificação e etiquetas da sua operação."}
-        </p>
-      </section>
+          <p className="mt-2 text-dh-muted">
+            {isEmpty
+              ? "Comece criando sua primeira ficha técnica — digite os ingredientes e o custo sai na hora."
+              : "Insumos, fichas técnicas, precificação e etiquetas da sua operação."}
+          </p>
+        </section>
 
       {isEmpty && (
         <section className="dh-animate-in-delay-1 mb-10 rounded-2xl border border-dh-accent/25 bg-dh-accent-soft/60 px-5 py-6 sm:px-8">
           <h2 className="font-display text-xl font-semibold text-dh-ink">
-            Primeiros passos
+            Crie sua ficha técnica agora
           </h2>
-          <ol className="mt-4 space-y-2 text-sm text-dh-ink-soft">
-            <li>1. Cadastre os insumos (farinha, proteínas, embalagens…)</li>
-            <li>2. Crie a ficha técnica do produto</li>
-            <li>3. Ajuste a precificação</li>
-            <li>4. Gere a etiqueta de validade</li>
-          </ol>
-          <Link href="/insumos" className="btn btn-primary mt-5">
-            Começar pelos insumos
+          <p className="mt-2 max-w-xl text-sm text-dh-ink-soft">
+            Como no fluxo profissional de cozinha: monte a receita, informe
+            custo dos ingredientes e veja o preço sugerido em tempo real.
+          </p>
+          <Link href="/fichas/nova" className="btn btn-primary mt-5">
+            Nova ficha técnica
           </Link>
         </section>
       )}

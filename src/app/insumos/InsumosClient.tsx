@@ -92,17 +92,26 @@ export default function InsumosClient({
       {
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify(payload),
       }
     );
 
-    setSaving(false);
+    if (res.status === 401) {
+      setError("Sessão expirada. Faça login novamente.");
+      setSaving(false);
+      router.push("/login?callbackUrl=/insumos");
+      return;
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error || "Não foi possível salvar o insumo.");
+      setSaving(false);
       return;
     }
+
+    setSaving(false);
 
     const saved = await res.json();
     startTransition(() => {

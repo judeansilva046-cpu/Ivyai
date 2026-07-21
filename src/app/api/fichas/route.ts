@@ -2,24 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calcularPrecificacao } from "@/lib/calculations";
 import { AuthError, requireSession, unauthorized } from "@/lib/session";
-
-async function validarInsumosDaOrganizacao(
-  organizationId: string,
-  itens: { insumoId: string }[]
-) {
-  const insumoIds = itens.map((item) => item.insumoId).filter(Boolean);
-  if (insumoIds.length === 0) return true;
-
-  const count = await prisma.insumo.count({
-    where: {
-      id: { in: insumoIds },
-      organizationId,
-      ativo: true,
-    },
-  });
-
-  return count === insumoIds.length;
-}
+import { resolverItensFicha } from "@/lib/ficha-itens";
 
 export async function GET() {
   try {
@@ -31,7 +14,7 @@ export async function GET() {
         precificacao: true,
         _count: { select: { etiquetas: true } },
       },
-      orderBy: { nome: "asc" },
+      orderBy: { updatedAt: "desc" },
     });
     return NextResponse.json(fichas);
   } catch (e) {
@@ -44,11 +27,28 @@ export async function POST(request: Request) {
   try {
     const user = await requireSession();
     const body = await request.json();
-    const itens = Array.isArray(body.itens) ? body.itens : [];
+    const rawItens = Array.isArray(body.itens) ? body.itens : [];
 
-    if (!(await validarInsumosDaOrganizacao(user.organizationId, itens))) {
+    let itens;
+    try {
+      itens = await resolverItensFicha(user.organizationId, rawItens);
+    } catch (err) {
       return NextResponse.json(
-        { error: "Um ou mais insumos são inválidos ou pertencem a outra organização." },
+        { error: err instanceof Error ? err.message : "Itens inválidos." },
+        { status: 400 }
+      );
+    }
+
+    if (!String(body.nome || "").trim()) {
+      return NextResponse.json(
+        { error: "Informe o nome da receita." },
+        { status: 400 }
+      );
+    }
+
+    if (itens.length === 0) {
+      return NextResponse.json(
+        { error: "Adicione pelo menos um ingrediente com quantidade." },
         { status: 400 }
       );
     }
@@ -64,27 +64,15 @@ export async function POST(request: Request) {
         validadeHoras: Number(body.validadeHoras) || 24,
         observacoes: String(body.observacoes || ""),
         itens: {
-          create: itens.map(
-            (item: {
-              insumoId: string;
-              quantidade: number;
-              perdaPercentual?: number;
-            }) => ({
-              insumoId: item.insumoId,
-              quantidade: Number(item.quantidade),
-              perdaPercentual: Number(item.perdaPercentual) || 0,
-            })
-          ),
+          create: itens.map((item) => ({
+            insumoId: item.insumoId,
+            quantidade: item.quantidade,
+            perdaPercentual: item.perdaPercentual,
+          })),
         },
       },
       include: { itens: { include: { insumo: true } } },
     });
-
-    const itensCusto = ficha.itens.map((i) => ({
-      quantidade: i.quantidade,
-      perdaPercentual: i.perdaPercentual,
-      custoUnitario: i.insumo.custoUnitario,
-    }));
 
     const params = {
       custoEmbalagem: Number(body.custoEmbalagem) || 0,
@@ -95,14 +83,24 @@ export async function POST(request: Request) {
       taxaDelivery: Number(body.taxaDelivery) || 0,
     };
 
-    const resultado = calcularPrecificacao(itensCusto, ficha.rendimento, params);
+    const resultado = calcularPrecificacao(
+      itens.map((i) => ({
+        quantidade: i.quantidade,
+        perdaPercentual: i.perdaPercentual,
+        custoUnitario: i.custoUnitario,
+      })),
+      ficha.rendimento,
+      params
+    );
+
+    const preco = Math.round(resultado.precoSugerido * 100) / 100;
 
     await prisma.precificacao.create({
       data: {
         fichaId: ficha.id,
         ...params,
-        precoSugerido: Math.round(resultado.precoSugerido * 100) / 100,
-        precoPraticado: Math.round(resultado.precoSugerido * 100) / 100,
+        precoSugerido: preco,
+        precoPraticado: preco,
       },
     });
 
@@ -117,6 +115,10 @@ export async function POST(request: Request) {
     return NextResponse.json(completa, { status: 201 });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized(e.message);
-    throw e;
+    console.error("DeliveryHub POST ficha:", e);
+    return NextResponse.json(
+      { error: "Não foi possível salvar a ficha." },
+      { status: 500 }
+    );
   }
 }

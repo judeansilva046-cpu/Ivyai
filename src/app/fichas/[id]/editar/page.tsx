@@ -18,7 +18,7 @@ export default async function EditarFichaPage({ params }: Props) {
   const ficha = await prisma.fichaTecnica.findUnique({
     where: { id },
     include: {
-      itens: true,
+      itens: { include: { insumo: true } },
       precificacao: true,
     },
   });
@@ -46,6 +46,9 @@ export default async function EditarFichaPage({ params }: Props) {
           observacoes: ficha.observacoes,
           itens: ficha.itens.map((i) => ({
             insumoId: i.insumoId,
+            nome: i.insumo.nome,
+            unidade: i.insumo.unidade,
+            custoUnitario: i.insumo.custoUnitario,
             quantidade: i.quantidade,
             perdaPercentual: i.perdaPercentual,
           })),

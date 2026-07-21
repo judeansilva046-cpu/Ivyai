@@ -23,8 +23,14 @@ declare module "next-auth" {
   }
 }
 
+const useSecureCookies =
+  (process.env.AUTH_URL || "").startsWith("https://") ||
+  process.env.NODE_ENV === "production";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
+  useSecureCookies,
   providers: [
     Credentials({
       name: "credentials",

@@ -2,26 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calcularPrecificacao } from "@/lib/calculations";
 import { AuthError, requireSession, unauthorized } from "@/lib/session";
+import { resolverItensFicha } from "@/lib/ficha-itens";
 
 type Params = { params: Promise<{ id: string }> };
-
-async function validarInsumosDaOrganizacao(
-  organizationId: string,
-  itens: { insumoId: string }[]
-) {
-  const insumoIds = itens.map((item) => item.insumoId).filter(Boolean);
-  if (insumoIds.length === 0) return true;
-
-  const count = await prisma.insumo.count({
-    where: {
-      id: { in: insumoIds },
-      organizationId,
-      ativo: true,
-    },
-  });
-
-  return count === insumoIds.length;
-}
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -52,16 +35,33 @@ export async function PUT(request: Request, { params }: Params) {
     const user = await requireSession();
     const { id } = await params;
     const body = await request.json();
-    const itens = Array.isArray(body.itens) ? body.itens : [];
+    const rawItens = Array.isArray(body.itens) ? body.itens : [];
 
     const existente = await prisma.fichaTecnica.findUnique({ where: { id } });
     if (!existente || existente.organizationId !== user.organizationId) {
       return NextResponse.json({ error: "Ficha não encontrada" }, { status: 404 });
     }
 
-    if (!(await validarInsumosDaOrganizacao(user.organizationId, itens))) {
+    let itens;
+    try {
+      itens = await resolverItensFicha(user.organizationId, rawItens);
+    } catch (err) {
       return NextResponse.json(
-        { error: "Um ou mais insumos são inválidos ou pertencem a outra organização." },
+        { error: err instanceof Error ? err.message : "Itens inválidos." },
+        { status: 400 }
+      );
+    }
+
+    if (!String(body.nome || "").trim()) {
+      return NextResponse.json(
+        { error: "Informe o nome da receita." },
+        { status: 400 }
+      );
+    }
+
+    if (itens.length === 0) {
+      return NextResponse.json(
+        { error: "Adicione pelo menos um ingrediente com quantidade." },
         { status: 400 }
       );
     }
@@ -79,27 +79,15 @@ export async function PUT(request: Request, { params }: Params) {
         validadeHoras: Number(body.validadeHoras) || 24,
         observacoes: String(body.observacoes || ""),
         itens: {
-          create: itens.map(
-            (item: {
-              insumoId: string;
-              quantidade: number;
-              perdaPercentual?: number;
-            }) => ({
-              insumoId: item.insumoId,
-              quantidade: Number(item.quantidade),
-              perdaPercentual: Number(item.perdaPercentual) || 0,
-            })
-          ),
+          create: itens.map((item) => ({
+            insumoId: item.insumoId,
+            quantidade: item.quantidade,
+            perdaPercentual: item.perdaPercentual,
+          })),
         },
       },
       include: { itens: { include: { insumo: true } }, precificacao: true },
     });
-
-    const itensCusto = ficha.itens.map((i) => ({
-      quantidade: i.quantidade,
-      perdaPercentual: i.perdaPercentual,
-      custoUnitario: i.insumo.custoUnitario,
-    }));
 
     const atual = ficha.precificacao;
     const paramsPrec = {
@@ -114,7 +102,15 @@ export async function PUT(request: Request, { params }: Params) {
       taxaDelivery: Number(body.taxaDelivery ?? atual?.taxaDelivery) || 0,
     };
 
-    const resultado = calcularPrecificacao(itensCusto, ficha.rendimento, paramsPrec);
+    const resultado = calcularPrecificacao(
+      itens.map((i) => ({
+        quantidade: i.quantidade,
+        perdaPercentual: i.perdaPercentual,
+        custoUnitario: i.custoUnitario,
+      })),
+      ficha.rendimento,
+      paramsPrec
+    );
     const precoSugerido = Math.round(resultado.precoSugerido * 100) / 100;
 
     if (atual) {
@@ -149,7 +145,11 @@ export async function PUT(request: Request, { params }: Params) {
     return NextResponse.json(completa);
   } catch (e) {
     if (e instanceof AuthError) return unauthorized(e.message);
-    throw e;
+    console.error("DeliveryHub PUT ficha:", e);
+    return NextResponse.json(
+      { error: "Não foi possível atualizar a ficha." },
+      { status: 500 }
+    );
   }
 }
 

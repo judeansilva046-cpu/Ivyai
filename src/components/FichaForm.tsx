@@ -1,19 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-type Insumo = {
-  id: string;
-  nome: string;
-  unidade: string;
-  custoUnitario: number;
-  categoria: string;
-};
+import { useMemo, useState } from "react";
+import { calcularPrecificacao, custoItem } from "@/lib/calculations";
+import { formatCurrency } from "@/lib/format";
 
 type ItemForm = {
+  key: string;
   insumoId: string;
+  nome: string;
+  unidade: string;
+  custoUnitario: string;
   quantidade: string;
   perdaPercentual: string;
 };
@@ -28,7 +25,14 @@ type Props = {
     modoPreparo: string;
     validadeHoras: number;
     observacoes: string;
-    itens: { insumoId: string; quantidade: number; perdaPercentual: number }[];
+    itens: {
+      insumoId: string;
+      nome?: string;
+      unidade?: string;
+      custoUnitario?: number;
+      quantidade: number;
+      perdaPercentual: number;
+    }[];
     precificacao?: {
       custoEmbalagem: number;
       custoMaoDeObra: number;
@@ -40,18 +44,25 @@ type Props = {
   };
 };
 
-const emptyItem = (): ItemForm => ({
-  insumoId: "",
-  quantidade: "",
-  perdaPercentual: "0",
-});
+const UNIDADES = ["g", "kg", "ml", "L", "un", "cx"];
+
+function newItem(): ItemForm {
+  return {
+    key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    insumoId: "",
+    nome: "",
+    unidade: "kg",
+    custoUnitario: "",
+    quantidade: "",
+    perdaPercentual: "0",
+  };
+}
 
 export function FichaForm({ fichaId, initial }: Props) {
   const router = useRouter();
-  const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [showInsumo, setShowInsumo] = useState(false);
+  const [okMsg, setOkMsg] = useState("");
 
   const [nome, setNome] = useState(initial?.nome ?? "");
   const [categoria, setCategoria] = useState(initial?.categoria ?? "Geral");
@@ -66,14 +77,19 @@ export function FichaForm({ fichaId, initial }: Props) {
     String(initial?.validadeHoras ?? "24")
   );
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? "");
+
   const [itens, setItens] = useState<ItemForm[]>(
     initial?.itens?.length
-      ? initial.itens.map((i) => ({
-          insumoId: i.insumoId,
+      ? initial.itens.map((i, idx) => ({
+          key: `init-${idx}`,
+          insumoId: i.insumoId || "",
+          nome: i.nome || "",
+          unidade: i.unidade || "kg",
+          custoUnitario: String(i.custoUnitario ?? ""),
           quantidade: String(i.quantidade),
-          perdaPercentual: String(i.perdaPercentual),
+          perdaPercentual: String(i.perdaPercentual ?? 0),
         }))
-      : [emptyItem()]
+      : [newItem()]
   );
 
   const [custoEmbalagem, setCustoEmbalagem] = useState(
@@ -95,401 +111,432 @@ export function FichaForm({ fichaId, initial }: Props) {
     String(initial?.precificacao?.taxaDelivery ?? "0")
   );
 
-  const [novoInsumo, setNovoInsumo] = useState({
-    nome: "",
-    unidade: "kg",
-    custoUnitario: "",
-    categoria: "Geral",
-  });
-
-  useEffect(() => {
-    fetch("/api/insumos")
-      .then((r) => r.json())
-      .then(setInsumos)
-      .catch(() => setError("Não foi possível carregar insumos."));
-  }, []);
-
-  function updateItem(index: number, patch: Partial<ItemForm>) {
+  function updateItem(key: string, patch: Partial<ItemForm>) {
     setItens((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...patch } : item))
+      prev.map((item) => (item.key === key ? { ...item, ...patch } : item))
     );
   }
 
-  async function criarInsumo(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/insumos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...novoInsumo,
-        custoUnitario: Number(novoInsumo.custoUnitario),
-      }),
-    });
-    if (!res.ok) {
-      setError("Erro ao criar insumo.");
-      return;
-    }
-    const criado = await res.json();
-    setInsumos((prev) => [...prev, criado].sort((a, b) => a.nome.localeCompare(b.nome)));
-    setShowInsumo(false);
-    setNovoInsumo({ nome: "", unidade: "kg", custoUnitario: "", categoria: "Geral" });
-  }
+  const live = useMemo(() => {
+    const custoItens = itens
+      .filter((i) => i.nome.trim() && i.quantidade && i.custoUnitario !== "")
+      .map((i) => ({
+        quantidade: Number(i.quantidade) || 0,
+        perdaPercentual: Number(i.perdaPercentual) || 0,
+        custoUnitario: Number(i.custoUnitario) || 0,
+      }));
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSaving(true);
-
-    const payload = {
-      nome,
-      categoria,
-      rendimento: Number(rendimento),
-      unidadeRendimento,
-      modoPreparo,
-      validadeHoras: Number(validadeHoras),
-      observacoes,
-      itens: itens
-        .filter((i) => i.insumoId && i.quantidade)
-        .map((i) => ({
-          insumoId: i.insumoId,
-          quantidade: Number(i.quantidade),
-          perdaPercentual: Number(i.perdaPercentual) || 0,
-        })),
+    return calcularPrecificacao(custoItens, Number(rendimento) || 1, {
       custoEmbalagem: Number(custoEmbalagem) || 0,
       custoMaoDeObra: Number(custoMaoDeObra) || 0,
       custoOperacional: Number(custoOperacional) || 0,
       margemPercentual: Number(margemPercentual) || 0,
       impostosPercentual: Number(impostosPercentual) || 0,
       taxaDelivery: Number(taxaDelivery) || 0,
-    };
+    });
+  }, [
+    itens,
+    rendimento,
+    custoEmbalagem,
+    custoMaoDeObra,
+    custoOperacional,
+    margemPercentual,
+    impostosPercentual,
+    taxaDelivery,
+  ]);
 
-    if (!payload.nome || payload.itens.length === 0) {
-      setError("Informe o nome e ao menos um insumo.");
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setOkMsg("");
+    setSaving(true);
+
+    const payloadItens = itens
+      .filter((i) => i.nome.trim() && Number(i.quantidade) > 0)
+      .map((i) => ({
+        insumoId: i.insumoId || undefined,
+        nome: i.nome.trim(),
+        unidade: i.unidade,
+        custoUnitario: Number(i.custoUnitario),
+        quantidade: Number(i.quantidade),
+        perdaPercentual: Number(i.perdaPercentual) || 0,
+      }));
+
+    if (!nome.trim()) {
+      setError("Informe o nome da receita.");
       setSaving(false);
       return;
     }
 
-    const res = await fetch(fichaId ? `/api/fichas/${fichaId}` : "/api/fichas", {
-      method: fichaId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    setSaving(false);
-
-    if (!res.ok) {
-      setError("Não foi possível salvar a ficha técnica.");
+    if (payloadItens.length === 0) {
+      setError("Adicione ao menos um ingrediente com nome, custo e quantidade.");
+      setSaving(false);
       return;
     }
 
-    const data = await res.json();
-    router.push(`/fichas/${data.id}`);
-    router.refresh();
+    for (const item of payloadItens) {
+      if (Number.isNaN(item.custoUnitario) || item.custoUnitario < 0) {
+        setError(`Informe o custo válido de "${item.nome}".`);
+        setSaving(false);
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch(fichaId ? `/api/fichas/${fichaId}` : "/api/fichas", {
+        method: fichaId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          nome: nome.trim(),
+          categoria,
+          rendimento: Number(rendimento) || 1,
+          unidadeRendimento,
+          modoPreparo,
+          validadeHoras: Number(validadeHoras) || 24,
+          observacoes,
+          itens: payloadItens,
+          custoEmbalagem: Number(custoEmbalagem) || 0,
+          custoMaoDeObra: Number(custoMaoDeObra) || 0,
+          custoOperacional: Number(custoOperacional) || 0,
+          margemPercentual: Number(margemPercentual) || 0,
+          impostosPercentual: Number(impostosPercentual) || 0,
+          taxaDelivery: Number(taxaDelivery) || 0,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        setError("Sessão expirada. Faça login novamente.");
+        setSaving(false);
+        router.push("/login");
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data.error || "Não foi possível salvar a ficha técnica.");
+        setSaving(false);
+        return;
+      }
+
+      setOkMsg("Ficha salva com sucesso!");
+      setSaving(false);
+      router.push(`/fichas/${data.id}`);
+      router.refresh();
+    } catch {
+      setError("Falha de conexão ao salvar. Tente novamente.");
+      setSaving(false);
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="dh-scale space-y-8">
+    <form onSubmit={onSubmit} className="dh-scale space-y-6">
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
-
-      <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
-        <h2 className="font-display mb-4 text-lg font-semibold">Identificação</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="field sm:col-span-2">
-            <label className="label" htmlFor="nome">
-              Nome do produto / preparo
-            </label>
-            <input
-              id="nome"
-              className="input"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              required
-              placeholder="Ex.: Brownie de chocolate"
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="categoria">
-              Categoria
-            </label>
-            <input
-              id="categoria"
-              className="input"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              placeholder="Delivery, Confeitaria..."
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="validade">
-              Validade (horas)
-            </label>
-            <input
-              id="validade"
-              type="number"
-              min="1"
-              className="input"
-              value={validadeHoras}
-              onChange={(e) => setValidadeHoras(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="rendimento">
-              Rendimento
-            </label>
-            <input
-              id="rendimento"
-              type="number"
-              min="0.01"
-              step="0.01"
-              className="input"
-              value={rendimento}
-              onChange={(e) => setRendimento(e.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="unidade">
-              Unidade de rendimento
-            </label>
-            <input
-              id="unidade"
-              className="input"
-              value={unidadeRendimento}
-              onChange={(e) => setUnidadeRendimento(e.target.value)}
-              placeholder="porções, unidades, fatias..."
-            />
-          </div>
+      {okMsg && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {okMsg}
         </div>
-      </section>
+      )}
 
-      <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold">Insumos</h2>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/insumos" className="btn btn-ghost">
-              Gerenciar
-            </Link>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
+            <h2 className="font-display mb-4 text-lg font-semibold">Receita</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="field sm:col-span-2">
+                <label className="label">Nome da receita</label>
+                <input
+                  className="input"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                  placeholder="Ex.: Brownie de chocolate"
+                />
+              </div>
+              <div className="field">
+                <label className="label">Categoria</label>
+                <input
+                  className="input"
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  placeholder="Confeitaria, Delivery..."
+                />
+              </div>
+              <div className="field">
+                <label className="label">Validade (horas)</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="input"
+                  value={validadeHoras}
+                  onChange={(e) => setValidadeHoras(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="label">Rendimento</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="input"
+                  value={rendimento}
+                  onChange={(e) => setRendimento(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label className="label">Unidade</label>
+                <input
+                  className="input"
+                  value={unidadeRendimento}
+                  onChange={(e) => setUnidadeRendimento(e.target.value)}
+                  placeholder="porções, unidades..."
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-semibold">
+                  Ingredientes
+                </h2>
+                <p className="text-sm text-dh-muted">
+                  Digite o nome, custo e quantidade — o DeliveryHub salva tudo junto.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {itens.map((item) => {
+                const linhaCusto = custoItem({
+                  quantidade: Number(item.quantidade) || 0,
+                  perdaPercentual: Number(item.perdaPercentual) || 0,
+                  custoUnitario: Number(item.custoUnitario) || 0,
+                });
+                return (
+                  <div
+                    key={item.key}
+                    className="grid gap-2 rounded-xl border border-dh-line/80 bg-dh-surface/40 p-3 sm:grid-cols-12"
+                  >
+                    <div className="field sm:col-span-4">
+                      <label className="label">Ingrediente</label>
+                      <input
+                        className="input"
+                        value={item.nome}
+                        onChange={(e) =>
+                          updateItem(item.key, { nome: e.target.value })
+                        }
+                        placeholder="Ex.: Farinha de trigo"
+                        required
+                      />
+                    </div>
+                    <div className="field sm:col-span-2">
+                      <label className="label">Unidade</label>
+                      <select
+                        className="select"
+                        value={item.unidade}
+                        onChange={(e) =>
+                          updateItem(item.key, { unidade: e.target.value })
+                        }
+                      >
+                        {UNIDADES.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field sm:col-span-2">
+                      <label className="label">Custo (R$)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="input"
+                        value={item.custoUnitario}
+                        onChange={(e) =>
+                          updateItem(item.key, {
+                            custoUnitario: e.target.value,
+                          })
+                        }
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+                    <div className="field sm:col-span-2">
+                      <label className="label">Qtd.</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        className="input"
+                        value={item.quantidade}
+                        onChange={(e) =>
+                          updateItem(item.key, { quantidade: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="field sm:col-span-1">
+                      <label className="label">Perda%</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        className="input"
+                        value={item.perdaPercentual}
+                        onChange={(e) =>
+                          updateItem(item.key, {
+                            perdaPercentual: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-end justify-between gap-2 sm:col-span-1 sm:flex-col sm:items-stretch">
+                      <p className="text-xs font-medium text-dh-muted sm:order-2">
+                        {formatCurrency(linhaCusto)}
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-ghost px-2 py-2"
+                        onClick={() =>
+                          setItens((prev) =>
+                            prev.length === 1
+                              ? [newItem()]
+                              : prev.filter((x) => x.key !== item.key)
+                          )
+                        }
+                        aria-label="Remover"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <button
               type="button"
-              className="btn btn-ghost"
-              onClick={() => setShowInsumo((v) => !v)}
+              className="btn btn-secondary mt-4"
+              onClick={() => setItens((prev) => [...prev, newItem()])}
             >
-              {showInsumo ? "Fechar" : "+ Novo insumo"}
+              + Adicionar ingrediente
             </button>
-          </div>
-        </div>
+          </section>
 
-        {showInsumo && (
-          <div className="mb-5 grid gap-3 rounded-xl border border-dh-accent/20 bg-dh-accent-soft/50 p-4 sm:grid-cols-4">
-            <div className="field">
-              <label className="label">Nome</label>
-              <input
-                className="input"
-                value={novoInsumo.nome}
-                onChange={(e) =>
-                  setNovoInsumo((p) => ({ ...p, nome: e.target.value }))
-                }
-              />
-            </div>
-            <div className="field">
-              <label className="label">Unidade</label>
-              <select
-                className="select"
-                value={novoInsumo.unidade}
-                onChange={(e) =>
-                  setNovoInsumo((p) => ({ ...p, unidade: e.target.value }))
-                }
-              >
-                {["g", "kg", "ml", "L", "un", "cx"].map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label">Custo unitário (R$)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="input"
-                value={novoInsumo.custoUnitario}
-                onChange={(e) =>
-                  setNovoInsumo((p) => ({
-                    ...p,
-                    custoUnitario: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="flex items-end">
-              <button type="button" className="btn btn-primary w-full" onClick={criarInsumo}>
-                Salvar insumo
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {itens.map((item, index) => (
-            <div
-              key={index}
-              className="grid gap-3 rounded-xl border border-dh-line/80 bg-dh-surface/50 p-3 sm:grid-cols-12"
-            >
-              <div className="field sm:col-span-5">
-                <label className="label">Insumo</label>
-                <select
-                  className="select"
-                  value={item.insumoId}
-                  onChange={(e) =>
-                    updateItem(index, { insumoId: e.target.value })
-                  }
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {insumos.map((ins) => (
-                    <option key={ins.id} value={ins.id}>
-                      {ins.nome} ({ins.unidade})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field sm:col-span-3">
-                <label className="label">Quantidade</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  className="input"
-                  value={item.quantidade}
-                  onChange={(e) =>
-                    updateItem(index, { quantidade: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="field sm:col-span-3">
-                <label className="label">Perda %</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className="input"
-                  value={item.perdaPercentual}
-                  onChange={(e) =>
-                    updateItem(index, { perdaPercentual: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex items-end sm:col-span-1">
-                <button
-                  type="button"
-                  className="btn btn-ghost w-full"
-                  onClick={() =>
-                    setItens((prev) =>
-                      prev.length === 1
-                        ? [emptyItem()]
-                        : prev.filter((_, i) => i !== index)
-                    )
-                  }
-                  aria-label="Remover item"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-secondary mt-4"
-          onClick={() => setItens((prev) => [...prev, emptyItem()])}
-        >
-          + Adicionar insumo
-        </button>
-      </section>
-
-      <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
-        <h2 className="font-display mb-4 text-lg font-semibold">
-          Preparo e observações
-        </h2>
-        <div className="grid gap-4">
-          <div className="field">
-            <label className="label" htmlFor="modo">
+          <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
+            <h2 className="font-display mb-4 text-lg font-semibold">
               Modo de preparo
-            </label>
+            </h2>
             <textarea
-              id="modo"
               className="textarea"
               value={modoPreparo}
               onChange={(e) => setModoPreparo(e.target.value)}
-              placeholder="Descreva as etapas do preparo..."
+              placeholder="Etapas do preparo..."
             />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="obs">
-              Observações
-            </label>
-            <textarea
-              id="obs"
-              className="textarea"
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
-        <h2 className="font-display mb-1 text-lg font-semibold">
-          Parâmetros de precificação
-        </h2>
-        <p className="mb-4 text-sm text-dh-muted">
-          Usados no módulo de Precificação para sugerir o preço de venda.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            ["Embalagem (R$)", custoEmbalagem, setCustoEmbalagem],
-            ["Mão de obra (R$)", custoMaoDeObra, setCustoMaoDeObra],
-            ["Operacional (R$)", custoOperacional, setCustoOperacional],
-            ["Margem %", margemPercentual, setMargemPercentual],
-            ["Impostos %", impostosPercentual, setImpostosPercentual],
-            ["Taxa delivery (R$)", taxaDelivery, setTaxaDelivery],
-          ].map(([label, value, setter]) => (
-            <div className="field" key={label as string}>
-              <label className="label">{label as string}</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="input"
-                value={value as string}
-                onChange={(e) =>
-                  (setter as (v: string) => void)(e.target.value)
-                }
+            <div className="field mt-4">
+              <label className="label">Observações</label>
+              <textarea
+                className="textarea"
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
               />
             </div>
-          ))}
+          </section>
         </div>
-      </section>
 
-      <div className="flex flex-wrap gap-3">
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "Salvando..." : fichaId ? "Atualizar ficha" : "Salvar ficha"}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => router.back()}
-        >
-          Cancelar
-        </button>
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-2xl border border-dh-accent/30 bg-dh-accent-soft p-5">
+            <h2 className="font-display text-lg font-semibold text-dh-ink">
+              Custo em tempo real
+            </h2>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-dh-muted">Custo ingredientes</dt>
+                <dd className="font-semibold">
+                  {formatCurrency(live.custoInsumos)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-dh-muted">Custo total</dt>
+                <dd className="font-semibold">
+                  {formatCurrency(live.custoTotal)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-dh-muted">Custo / porção</dt>
+                <dd className="font-semibold">
+                  {formatCurrency(live.custoPorPorcao)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2 border-t border-dh-accent/20 pt-2">
+                <dt className="text-dh-muted">Preço sugerido</dt>
+                <dd className="font-display text-xl font-bold text-dh-accent-deep">
+                  {formatCurrency(live.precoSugerido)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-dh-muted">Lucro estimado</dt>
+                <dd className="font-semibold text-dh-sage">
+                  {formatCurrency(live.lucroEstimado)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="rounded-2xl border border-dh-line bg-dh-elevated p-5">
+            <h3 className="font-display mb-3 text-base font-semibold">
+              Precificação
+            </h3>
+            <div className="grid gap-3">
+              {(
+                [
+                  ["Embalagem (R$)", custoEmbalagem, setCustoEmbalagem],
+                  ["Mão de obra (R$)", custoMaoDeObra, setCustoMaoDeObra],
+                  ["Operacional (R$)", custoOperacional, setCustoOperacional],
+                  ["Margem %", margemPercentual, setMargemPercentual],
+                  ["Impostos %", impostosPercentual, setImpostosPercentual],
+                  ["Taxa delivery (R$)", taxaDelivery, setTaxaDelivery],
+                ] as const
+              ).map(([label, value, setter]) => (
+                <div className="field" key={label}>
+                  <label className="label">{label}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input"
+                    value={value}
+                    onChange={(e) => setter(e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary w-full" disabled={saving}>
+            {saving
+              ? "Salvando..."
+              : fichaId
+                ? "Atualizar ficha"
+                : "Salvar ficha técnica"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary w-full"
+            onClick={() => router.push("/fichas")}
+          >
+            Cancelar
+          </button>
+        </aside>
       </div>
     </form>
   );
