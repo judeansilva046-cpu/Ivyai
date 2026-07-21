@@ -35,6 +35,13 @@ export default async function HomePage() {
 
   const modules = [
     {
+      href: "/insumos",
+      title: "Insumos",
+      description:
+        "Cadastre matérias-primas e atualize custos que alimentam as fichas.",
+      cta: "Gerenciar insumos",
+    },
+    {
       href: "/fichas",
       title: "Ficha Técnica",
       description:
@@ -67,7 +74,7 @@ export default async function HomePage() {
           Operação de cozinha e delivery em um só lugar
         </h1>
         <p className="mt-4 max-w-xl text-lg text-dh-muted">
-          Fichas técnicas, precificação e etiquetas de validade integradas para
+          Insumos, fichas técnicas, precificação e etiquetas de validade para
           restaurantes, cozinhas e confeitarias.
         </p>
       </section>
@@ -83,7 +90,7 @@ export default async function HomePage() {
         />
       </section>
 
-      <section className="dh-animate-in-delay-2 mb-12 grid gap-4 md:grid-cols-3">
+      <section className="dh-animate-in-delay-2 mb-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {modules.map((mod) => (
           <Link
             key={mod.href}

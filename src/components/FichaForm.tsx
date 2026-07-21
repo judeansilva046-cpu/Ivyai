@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -268,13 +269,18 @@ export function FichaForm({ fichaId, initial }: Props) {
       <section className="rounded-2xl border border-dh-line bg-dh-elevated p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-lg font-semibold">Insumos</h2>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setShowInsumo((v) => !v)}
-          >
-            {showInsumo ? "Fechar" : "+ Novo insumo"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/insumos" className="btn btn-ghost">
+              Gerenciar
+            </Link>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowInsumo((v) => !v)}
+            >
+              {showInsumo ? "Fechar" : "+ Novo insumo"}
+            </button>
+          </div>
         </div>
 
         {showInsumo && (

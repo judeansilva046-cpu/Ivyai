@@ -6,9 +6,10 @@ import { useState } from "react";
 
 const nav = [
   { href: "/", label: "Painel", icon: "grid" },
+  { href: "/insumos", label: "Insumos", icon: "box" },
   { href: "/fichas", label: "Ficha Técnica", icon: "book" },
   { href: "/precificacao", label: "Precificação", icon: "tag" },
-  { href: "/etiquetas", label: "Etiqueta de Validade", icon: "label" },
+  { href: "/etiquetas", label: "Etiquetas", icon: "label" },
 ] as const;
 
 function NavIcon({ name }: { name: (typeof nav)[number]["icon"] }) {
@@ -21,6 +22,13 @@ function NavIcon({ name }: { name: (typeof nav)[number]["icon"] }) {
           <rect x="14" y="3" width="7" height="7" rx="1" />
           <rect x="3" y="14" width="7" height="7" rx="1" />
           <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "box":
+      return (
+        <svg className={common} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
         </svg>
       );
     case "book":
@@ -57,8 +65,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="no-print sticky top-0 z-40 border-b border-dh-line/80 bg-[#f7faf7]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="group flex items-center gap-2.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="group flex shrink-0 items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-dh-ink text-sm font-bold tracking-tight text-white transition-transform group-hover:scale-105">
               DH
             </span>
@@ -66,18 +74,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="font-display text-lg font-semibold tracking-tight text-dh-ink">
                 DeliveryHub
               </p>
-              <p className="hidden text-[11px] text-dh-muted sm:block">
+              <p className="hidden text-[11px] text-dh-muted lg:block">
                 Operação de cozinha e delivery
               </p>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-0.5 lg:flex">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? "bg-dh-sage-soft text-dh-sage"
                     : "text-dh-ink-soft hover:bg-white hover:text-dh-ink"
@@ -91,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <button
             type="button"
-            className="btn btn-secondary md:hidden"
+            className="btn btn-secondary lg:hidden"
             aria-label="Abrir menu"
             onClick={() => setOpen((v) => !v)}
           >
@@ -100,7 +108,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {open && (
-          <nav className="dh-fade border-t border-dh-line px-4 py-3 md:hidden">
+          <nav className="dh-fade border-t border-dh-line px-4 py-3 lg:hidden">
             <div className="flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
@@ -125,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
 
       <footer className="no-print border-t border-dh-line/70 py-6 text-center text-xs text-dh-muted">
-        DeliveryHub — fichas técnicas, precificação e etiquetas de validade
+        DeliveryHub — insumos, fichas técnicas, precificação e etiquetas de validade
       </footer>
     </div>
   );
