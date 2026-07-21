@@ -1,0 +1,91 @@
+// DeliveryHub — schema do banco de dados SQLite
+// Sistema para restaurantes, cozinhas, confeitarias e operações de delivery
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Insumo / matéria-prima utilizado nas fichas técnicas
+model Insumo {
+  id            String   @id @default(cuid())
+  nome          String
+  unidade       String // g, kg, ml, L, un, cx
+  custoUnitario Float
+  categoria     String   @default("Geral")
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  itensFicha ItemFicha[]
+}
+
+/// Ficha técnica de um produto / preparo
+model FichaTecnica {
+  id                String   @id @default(cuid())
+  nome              String
+  categoria         String   @default("Geral")
+  rendimento        Float
+  unidadeRendimento String   @default("porções")
+  modoPreparo       String   @default("")
+  validadeHoras     Int      @default(24)
+  observacoes       String   @default("")
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  itens        ItemFicha[]
+  precificacao Precificacao?
+  etiquetas    EtiquetaValidade[]
+}
+
+/// Item (insumo + quantidade) de uma ficha técnica
+model ItemFicha {
+  id              String @id @default(cuid())
+  fichaId         String
+  insumoId        String
+  quantidade      Float
+  perdaPercentual Float  @default(0)
+
+  ficha  FichaTecnica @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+  insumo Insumo       @relation(fields: [insumoId], references: [id])
+}
+
+/// Precificação vinculada a uma ficha técnica
+model Precificacao {
+  id                 String   @id @default(cuid())
+  fichaId            String   @unique
+  custoEmbalagem     Float    @default(0)
+  custoMaoDeObra     Float    @default(0)
+  custoOperacional   Float    @default(0)
+  margemPercentual   Float    @default(30)
+  impostosPercentual Float    @default(0)
+  taxaDelivery       Float    @default(0)
+  precoSugerido      Float    @default(0)
+  precoPraticado     Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  ficha FichaTecnica @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+}
+
+/// Etiqueta de validade para produtos / preparos
+model EtiquetaValidade {
+  id            String   @id @default(cuid())
+  fichaId       String?
+  nomeProduto   String
+  lote          String
+  dataProducao  DateTime
+  dataValidade  DateTime
+  responsavel   String
+  armazenamento String   @default("Refrigerado")
+  observacoes   String   @default("")
+  quantidade    Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ficha FichaTecnica? @relation(fields: [fichaId], references: [id], onDelete: SetNull)
+}
