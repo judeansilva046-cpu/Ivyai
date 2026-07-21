@@ -24,13 +24,25 @@ export default auth((req) => {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
-    const url = new URL("/login", req.nextUrl.origin);
-    url.searchParams.set("callbackUrl", pathname);
+    const url = req.nextUrl.clone();
+    // Plataforma limpa: raiz leva ao cadastro; demais rotas ao login
+    url.pathname = pathname === "/" ? "/registro" : "/login";
+    url.search = "";
+    if (
+      pathname !== "/" &&
+      pathname.startsWith("/") &&
+      !pathname.startsWith("//")
+    ) {
+      url.searchParams.set("callbackUrl", pathname);
+    }
     return NextResponse.redirect(url);
   }
 
   if (isLoggedIn && (pathname === "/login" || pathname === "/registro")) {
-    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

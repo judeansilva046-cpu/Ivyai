@@ -11,6 +11,7 @@ export default function RegistroPage() {
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     organizationName: "",
   });
   const [error, setError] = useState("");
@@ -21,35 +22,60 @@ export default function RegistroPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/registro", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
+    if (form.password.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
       setLoading(false);
-      setError(data.error || "Não foi possível criar a conta.");
       return;
     }
 
-    const login = await signIn("credentials", {
-      email: form.email,
-      password: form.password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (login?.error) {
-      router.push("/login");
+    if (form.password !== form.confirmPassword) {
+      setError("As senhas não coincidem.");
+      setLoading(false);
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    try {
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        organizationName: form.organizationName.trim(),
+      };
+
+      const res = await fetch("/api/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error || "Não foi possível criar a conta.");
+        setLoading(false);
+        return;
+      }
+
+      const login = await signIn("credentials", {
+        email: payload.email,
+        password: payload.password,
+        redirect: false,
+        callbackUrl: "/",
+      });
+
+      if (login?.error) {
+        setError("Conta criada. Faça login para continuar.");
+        setLoading(false);
+        router.push("/login");
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError("Falha ao criar conta. Tente novamente.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -63,7 +89,7 @@ export default function RegistroPage() {
             Criar sua operação
           </h1>
           <p className="mt-2 text-dh-muted">
-            Cadastre o restaurante ou cozinha e comece a usar agora.
+            Cadastre o restaurante ou cozinha e comece do zero, com dados isolados.
           </p>
         </div>
 
@@ -96,6 +122,7 @@ export default function RegistroPage() {
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
+              placeholder="Nome do responsável"
             />
           </div>
           <div className="field">
@@ -109,6 +136,7 @@ export default function RegistroPage() {
               }
               required
               autoComplete="email"
+              placeholder="voce@restaurante.com"
             />
           </div>
           <div className="field">
@@ -123,11 +151,26 @@ export default function RegistroPage() {
               required
               minLength={6}
               autoComplete="new-password"
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          <div className="field">
+            <label className="label">Confirmar senha</label>
+            <input
+              type="password"
+              className="input"
+              value={form.confirmPassword}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, confirmPassword: e.target.value }))
+              }
+              required
+              minLength={6}
+              autoComplete="new-password"
             />
           </div>
 
           <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-            {loading ? "Criando..." : "Criar conta"}
+            {loading ? "Criando..." : "Criar conta e começar"}
           </button>
 
           <p className="text-center text-sm text-dh-muted">

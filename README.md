@@ -36,12 +36,19 @@ npm run dev
 
 Abra [http://localhost:3000](http://localhost:3000).
 
-**Conta demo (seed)**
+A raiz abre em **Criar conta** (`/registro`). Cada operação começa com dados vazios e isolados.
 
-- E-mail: `admin@deliveryhub.local`
-- Senha: `deliveryhub123`
+Para popular dados de demonstração (opcional):
 
-Ou crie uma operação nova em `/registro`.
+```bash
+npm run db:seed
+```
+
+Para limpar tudo e voltar ao estado de cadastro:
+
+```bash
+npm run db:clean
+```
 
 ## Hospedar no domínio
 

@@ -13,7 +13,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
+    "db:clean": "npx tsx prisma/clean.ts",
     "deliveryhub:setup": "prisma migrate dev && npx tsx prisma/seed.ts",
+    "deliveryhub:clean": "prisma migrate deploy && npx tsx prisma/clean.ts",
     "deliveryhub:prod": "prisma migrate deploy && next start",
     "postinstall": "prisma generate"
   },

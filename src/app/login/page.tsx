@@ -5,10 +5,17 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
+function safeCallback(raw: string | null): string {
+  if (!raw) return "/";
+  // Evita redirecionar para URLs absolutas externas quebradas
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/";
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") || "/";
+  const callbackUrl = safeCallback(params.get("callbackUrl"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,21 +26,26 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        redirect: false,
+        callbackUrl,
+      });
 
-    setLoading(false);
+      if (result?.error) {
+        setError("E-mail ou senha inválidos.");
+        setLoading(false);
+        return;
+      }
 
-    if (result?.error) {
-      setError("E-mail ou senha inválidos.");
-      return;
+      router.replace(callbackUrl);
+      router.refresh();
+    } catch {
+      setError("Falha ao entrar. Tente novamente.");
+      setLoading(false);
     }
-
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (
@@ -78,7 +90,7 @@ function LoginForm() {
       <p className="text-center text-sm text-dh-muted">
         Ainda não tem conta?{" "}
         <Link href="/registro" className="font-semibold text-dh-accent">
-          Criar conta
+          Criar conta grátis
         </Link>
       </p>
     </form>
@@ -105,9 +117,6 @@ export default function LoginPage() {
             <LoginForm />
           </Suspense>
         </div>
-        <p className="mt-4 text-center text-xs text-dh-muted">
-          Demo: admin@deliveryhub.local / deliveryhub123
-        </p>
       </div>
     </div>
   );

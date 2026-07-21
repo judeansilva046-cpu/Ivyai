@@ -18,9 +18,20 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: "A senha deve ter pelo menos 6 caracteres." },
+        { status: 400 }
+      );
+    }
+
+    if (organizationName.length < 2 || name.length < 2) {
+      return NextResponse.json(
+        { error: "Informe nome e operação com pelo menos 2 caracteres." },
         { status: 400 }
       );
     }
