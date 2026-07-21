@@ -22,6 +22,10 @@ type Props = {
     categoria: string;
     rendimento: number;
     unidadeRendimento: string;
+    descricao?: string;
+    tempoPreparo?: string;
+    pesoTotal?: number;
+    utensilios?: string;
     modoPreparo: string;
     validadeHoras: number;
     observacoes: string;
@@ -72,6 +76,12 @@ export function FichaForm({ fichaId, initial }: Props) {
   const [unidadeRendimento, setUnidadeRendimento] = useState(
     initial?.unidadeRendimento ?? "porções"
   );
+  const [descricao, setDescricao] = useState(initial?.descricao ?? "");
+  const [tempoPreparo, setTempoPreparo] = useState(initial?.tempoPreparo ?? "");
+  const [pesoTotal, setPesoTotal] = useState(
+    String(initial?.pesoTotal && initial.pesoTotal > 0 ? initial.pesoTotal : "")
+  );
+  const [utensilios, setUtensilios] = useState(initial?.utensilios ?? "");
   const [modoPreparo, setModoPreparo] = useState(initial?.modoPreparo ?? "");
   const [validadeHoras, setValidadeHoras] = useState(
     String(initial?.validadeHoras ?? "24")
@@ -192,6 +202,10 @@ export function FichaForm({ fichaId, initial }: Props) {
           categoria,
           rendimento: Number(rendimento) || 1,
           unidadeRendimento,
+          descricao,
+          tempoPreparo,
+          pesoTotal: Number(pesoTotal) || 0,
+          utensilios,
           modoPreparo,
           validadeHoras: Number(validadeHoras) || 24,
           observacoes,
@@ -296,6 +310,46 @@ export function FichaForm({ fichaId, initial }: Props) {
                   value={unidadeRendimento}
                   onChange={(e) => setUnidadeRendimento(e.target.value)}
                   placeholder="porções, unidades..."
+                />
+              </div>
+              <div className="field">
+                <label className="label">Peso total (g)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="input"
+                  value={pesoTotal}
+                  onChange={(e) => setPesoTotal(e.target.value)}
+                  placeholder="Ex.: 7000"
+                />
+              </div>
+              <div className="field">
+                <label className="label">Tempo de preparo</label>
+                <input
+                  className="input"
+                  value={tempoPreparo}
+                  onChange={(e) => setTempoPreparo(e.target.value)}
+                  placeholder="Ex.: 12 horas, 45 min"
+                />
+              </div>
+              <div className="field sm:col-span-2">
+                <label className="label">Descrição</label>
+                <textarea
+                  className="textarea"
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="Breve descrição do prato..."
+                  rows={3}
+                />
+              </div>
+              <div className="field sm:col-span-2">
+                <label className="label">Utensílios</label>
+                <input
+                  className="input"
+                  value={utensilios}
+                  onChange={(e) => setUtensilios(e.target.value)}
+                  placeholder="Tábua, facas, panela grande..."
                 />
               </div>
             </div>
@@ -440,7 +494,8 @@ export function FichaForm({ fichaId, initial }: Props) {
               className="textarea"
               value={modoPreparo}
               onChange={(e) => setModoPreparo(e.target.value)}
-              placeholder="Etapas do preparo..."
+              placeholder={"1. Higienização...\n2. Mise en place...\n3. ..."}
+              rows={8}
             />
             <div className="field mt-4">
               <label className="label">Observações</label>

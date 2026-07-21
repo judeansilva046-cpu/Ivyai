@@ -55,7 +55,7 @@ model Insumo {
   @@index([organizationId])
 }
 
-/// Ficha técnica de um produto / preparo
+/// Ficha técnica de um produto / preparo (layout estilo documento profissional)
 model FichaTecnica {
   id                String   @id @default(cuid())
   organizationId    String
@@ -63,6 +63,10 @@ model FichaTecnica {
   categoria         String   @default("Geral")
   rendimento        Float
   unidadeRendimento String   @default("porções")
+  descricao         String   @default("")
+  tempoPreparo      String   @default("") // ex.: "12 horas", "45 min"
+  pesoTotal         Float    @default(0) // em gramas
+  utensilios        String   @default("")
   modoPreparo       String   @default("")
   validadeHoras     Int      @default(24)
   observacoes       String   @default("")
