@@ -1,0 +1,12 @@
+# BANCADA — regras do projeto
+
+- Produto: SaaS para pequenos produtores de alimentos (confeitarias, marmitarias, restaurantes).
+- Stack: Next.js 14 App Router em JavaScript/JSX (sem TypeScript), Supabase (@supabase/ssr), jsPDF, estilos inline (sem Tailwind), deploy Vercel.
+- Idioma: todo código, UI, commits e comentários em português (variáveis sem acento).
+- Cálculos: TODA a lógica de custo/preço vive em `lib/calculos.js` — fonte única da verdade.
+- Banco: schema via migrations em `supabase/migrations/`. Nunca editar `001_init.sql`; novas mudanças = nova migration.
+- Design: verde #2E6B4F, fundo #F2F4F0, tinta #212824, cinza #5C6660, borda #DDE3DC, alerta #B97F1B.
+- Fontes: Archivo (títulos/corpo) e IBM Plex Mono (números, valores, labels pequenos em caixa alta).
+- Moeda: sempre BRL via toLocaleString("pt-BR").
+- Auth: e-mail/senha via Supabase; middleware protege `/app`.
+- Após o MVP: Stripe, plano grátis (3 fichas) vs Pro, catálogo de insumos, etc. (ver README).
