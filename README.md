@@ -2,11 +2,12 @@
 
 Sistema web para restaurantes, cozinhas, confeitarias e operações de delivery.
 
-**DeliveryHub** integra três módulos:
+**DeliveryHub** integra os módulos:
 
-1. **Ficha Técnica** — cadastro de preparos com insumos, rendimento, modo de preparo e validade
-2. **Precificação** — cálculo de custo, margem, impostos e preço sugerido/praticado
-3. **Etiqueta de Validade** — geração e impressão de etiquetas com lote, produção e validade
+1. **Insumos** — cadastro e atualização de matérias-primas e custos
+2. **Ficha Técnica** — cadastro de preparos com insumos, rendimento, modo de preparo e validade
+3. **Precificação** — cálculo de custo, margem, impostos e preço sugerido/praticado
+4. **Etiqueta de Validade** — geração e impressão de etiquetas com lote, produção e validade
 
 ## Nome técnico
 
@@ -51,10 +52,17 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 ## Módulos
 
+### Insumos (`/insumos`)
+
+- CRUD de matérias-primas (nome, unidade, custo, categoria)
+- Busca e filtro por categoria
+- Ao alterar o custo, o DeliveryHub recalcula o preço sugerido das fichas vinculadas
+
 ### Ficha Técnica (`/fichas`)
 
 - CRUD de fichas com lista de insumos e perda percentual
-- Cadastro rápido de insumos
+- Cadastro rápido de insumos ou vínculo com o módulo Insumos
+- Busca por nome/categoria
 - Rendimento, validade em horas e modo de preparo
 - Ao salvar, cria/atualiza a precificação vinculada
 
@@ -68,6 +76,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 - Vínculo opcional com ficha técnica
 - Cálculo automático da validade pelas horas da ficha
+- Busca por produto, lote ou responsável
 - Visual pronto para impressão (Ctrl/Cmd+P)
 
 ## Banco de dados
