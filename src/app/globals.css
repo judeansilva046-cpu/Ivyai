@@ -124,22 +124,28 @@ a {
   animation: dh-scale-in 0.35s ease-out both;
 }
 
-/* Etiqueta de validade — impressão */
+/* Etiqueta / ficha técnica — impressão */
 @media print {
   body * {
     visibility: hidden;
   }
 
   .etiqueta-print,
-  .etiqueta-print * {
+  .etiqueta-print *,
+  .ficha-print,
+  .ficha-print * {
     visibility: visible;
   }
 
-  .etiqueta-print {
+  .etiqueta-print,
+  .ficha-print {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
 
   .no-print {

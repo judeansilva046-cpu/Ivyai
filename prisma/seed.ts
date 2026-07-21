@@ -1,5 +1,6 @@
 // DeliveryHub — seed de dados de exemplo para demonstração
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import path from "path";
@@ -20,10 +21,32 @@ async function main() {
   await prisma.itemFicha.deleteMany();
   await prisma.fichaTecnica.deleteMany();
   await prisma.insumo.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.organization.deleteMany();
+
+  const passwordHash = await bcrypt.hash("deliveryhub123", 12);
+
+  const org = await prisma.organization.create({
+    data: {
+      nome: "Cozinha Demo DeliveryHub",
+      slug: "cozinha-demo",
+      users: {
+        create: {
+          name: "Admin Demo",
+          email: "admin@deliveryhub.local",
+          passwordHash,
+          role: "admin",
+        },
+      },
+    },
+  });
+
+  const orgId = org.id;
 
   const insumos = await Promise.all([
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Farinha de trigo",
         unidade: "kg",
         custoUnitario: 5.9,
@@ -32,6 +55,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Açúcar cristal",
         unidade: "kg",
         custoUnitario: 4.5,
@@ -40,6 +64,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Ovos",
         unidade: "un",
         custoUnitario: 0.85,
@@ -48,6 +73,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Manteiga sem sal",
         unidade: "kg",
         custoUnitario: 42.0,
@@ -56,6 +82,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Leite integral",
         unidade: "L",
         custoUnitario: 5.2,
@@ -64,6 +91,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Chocolate meio amargo",
         unidade: "kg",
         custoUnitario: 68.0,
@@ -72,6 +100,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Peito de frango",
         unidade: "kg",
         custoUnitario: 22.5,
@@ -80,6 +109,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Arroz tipo 1",
         unidade: "kg",
         custoUnitario: 6.8,
@@ -88,6 +118,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Feijão carioca",
         unidade: "kg",
         custoUnitario: 9.2,
@@ -96,6 +127,7 @@ async function main() {
     }),
     prisma.insumo.create({
       data: {
+        organizationId: orgId,
         nome: "Embalagem marmita 750ml",
         unidade: "un",
         custoUnitario: 1.4,
@@ -119,6 +151,7 @@ async function main() {
 
   const brownie = await prisma.fichaTecnica.create({
     data: {
+      organizationId: orgId,
       nome: "Brownie de chocolate",
       categoria: "Confeitaria",
       rendimento: 12,
@@ -142,6 +175,7 @@ async function main() {
 
   const marmita = await prisma.fichaTecnica.create({
     data: {
+      organizationId: orgId,
       nome: "Marmita frango com arroz e feijão",
       categoria: "Delivery",
       rendimento: 1,
@@ -164,6 +198,7 @@ async function main() {
 
   const bolo = await prisma.fichaTecnica.create({
     data: {
+      organizationId: orgId,
       nome: "Bolo de leite",
       categoria: "Confeitaria",
       rendimento: 16,
@@ -220,6 +255,7 @@ async function main() {
 
   await prisma.etiquetaValidade.create({
     data: {
+      organizationId: orgId,
       fichaId: brownie.id,
       nomeProduto: brownie.nome,
       lote: `BRW-${agora.toISOString().slice(0, 10).replace(/-/g, "")}-01`,
@@ -234,6 +270,7 @@ async function main() {
 
   await prisma.etiquetaValidade.create({
     data: {
+      organizationId: orgId,
       fichaId: marmita.id,
       nomeProduto: marmita.nome,
       lote: `MAR-${agora.toISOString().slice(0, 10).replace(/-/g, "")}-01`,
@@ -246,7 +283,8 @@ async function main() {
     },
   });
 
-  console.log("DeliveryHub — seed concluído com sucesso.");
+  console.log("DeliveryHub — seed concluído.");
+  console.log("Login demo: admin@deliveryhub.local / deliveryhub123");
 }
 
 main()

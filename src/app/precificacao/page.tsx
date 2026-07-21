@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { calcularPrecificacao } from "@/lib/calculations";
 import PrecificacaoClient from "./PrecificacaoClient";
-import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default async function PrecificacaoPage() {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+  const orgId = session.user.organizationId;
+
   const precos = await prisma.precificacao.findMany({
+    where: { ficha: { organizationId: orgId, ativo: true } },
     include: {
       ficha: {
         include: {

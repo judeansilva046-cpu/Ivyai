@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { FichaForm } from "@/components/FichaForm";
@@ -10,16 +11,21 @@ type Props = { params: Promise<{ id: string }> };
 export const metadata = { title: "Editar ficha técnica" };
 
 export default async function EditarFichaPage({ params }: Props) {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const { id } = await params;
   const ficha = await prisma.fichaTecnica.findUnique({
     where: { id },
     include: {
-      itens: true,
+      itens: { include: { insumo: true } },
       precificacao: true,
     },
   });
 
-  if (!ficha || !ficha.ativo) notFound();
+  if (!ficha || !ficha.ativo || ficha.organizationId !== session.user.organizationId) {
+    notFound();
+  }
 
   return (
     <div>
@@ -35,11 +41,18 @@ export default async function EditarFichaPage({ params }: Props) {
           categoria: ficha.categoria,
           rendimento: ficha.rendimento,
           unidadeRendimento: ficha.unidadeRendimento,
+          descricao: ficha.descricao,
+          tempoPreparo: ficha.tempoPreparo,
+          pesoTotal: ficha.pesoTotal,
+          utensilios: ficha.utensilios,
           modoPreparo: ficha.modoPreparo,
           validadeHoras: ficha.validadeHoras,
           observacoes: ficha.observacoes,
           itens: ficha.itens.map((i) => ({
             insumoId: i.insumoId,
+            nome: i.insumo.nome,
+            unidade: i.insumo.unidade,
+            custoUnitario: i.insumo.custoUnitario,
             quantidade: i.quantidade,
             perdaPercentual: i.perdaPercentual,
           })),

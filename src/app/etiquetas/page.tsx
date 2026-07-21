@@ -1,18 +1,34 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
-import { formatDateTime } from "@/lib/format";
+import { EtiquetasList } from "@/components/EtiquetasList";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Etiqueta de Validade" };
 
 export default async function EtiquetasPage() {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+
   const etiquetas = await prisma.etiquetaValidade.findMany({
+    where: { organizationId: session.user.organizationId },
     include: { ficha: true },
     orderBy: { createdAt: "desc" },
   });
 
   const agora = new Date();
+  const items = etiquetas.map((et) => ({
+    id: et.id,
+    nomeProduto: et.nomeProduto,
+    lote: et.lote,
+    dataProducao: et.dataProducao.toISOString(),
+    dataValidade: et.dataValidade.toISOString(),
+    responsavel: et.responsavel,
+    quantidade: et.quantidade,
+    vencida: et.dataValidade < agora,
+  }));
 
   return (
     <div>
@@ -33,58 +49,7 @@ export default async function EtiquetasPage() {
           </Link>
         </div>
       ) : (
-        <div className="dh-animate-in-delay-1 grid gap-3 sm:grid-cols-2">
-          {etiquetas.map((et) => {
-            const vencida = et.dataValidade < agora;
-            return (
-              <Link
-                key={et.id}
-                href={`/etiquetas/${et.id}`}
-                className="rounded-2xl border border-dh-line bg-dh-elevated p-5 transition-all hover:-translate-y-0.5 hover:border-dh-accent/40"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-display text-lg font-semibold text-dh-ink">
-                      {et.nomeProduto}
-                    </p>
-                    <p className="mt-1 text-sm text-dh-muted">Lote {et.lote}</p>
-                  </div>
-                  <span
-                    className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                      vencida
-                        ? "bg-red-50 text-red-700"
-                        : "bg-dh-sage-soft text-dh-sage"
-                    }`}
-                  >
-                    {vencida ? "Vencida" : "Válida"}
-                  </span>
-                </div>
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-xs text-dh-muted">Produção</dt>
-                    <dd className="font-medium">
-                      {formatDateTime(et.dataProducao)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-dh-muted">Validade</dt>
-                    <dd className="font-medium">
-                      {formatDateTime(et.dataValidade)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-dh-muted">Responsável</dt>
-                    <dd className="font-medium">{et.responsavel}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-dh-muted">Qtd.</dt>
-                    <dd className="font-medium">{et.quantidade}</dd>
-                  </div>
-                </dl>
-              </Link>
-            );
-          })}
-        </div>
+        <EtiquetasList items={items} />
       )}
     </div>
   );

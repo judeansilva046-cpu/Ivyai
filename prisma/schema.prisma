@@ -9,27 +9,64 @@ datasource db {
   provider = "sqlite"
 }
 
-/// Insumo / matéria-prima utilizado nas fichas técnicas
-model Insumo {
-  id            String   @id @default(cuid())
-  nome          String
-  unidade       String // g, kg, ml, L, un, cx
-  custoUnitario Float
-  categoria     String   @default("Geral")
-  ativo         Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+/// Organização / restaurante / cozinha no DeliveryHub
+model Organization {
+  id        String   @id @default(cuid())
+  nome      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  itensFicha ItemFicha[]
+  users     User[]
+  insumos   Insumo[]
+  fichas    FichaTecnica[]
+  etiquetas EtiquetaValidade[]
 }
 
-/// Ficha técnica de um produto / preparo
+/// Usuário do DeliveryHub vinculado a uma organização
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           String   @default("admin") // admin | operador
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+/// Insumo / matéria-prima utilizado nas fichas técnicas
+model Insumo {
+  id             String   @id @default(cuid())
+  organizationId String
+  nome           String
+  unidade        String // g, kg, ml, L, un, cx
+  custoUnitario  Float
+  categoria      String   @default("Geral")
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  itensFicha   ItemFicha[]
+
+  @@index([organizationId])
+}
+
+/// Ficha técnica de um produto / preparo (layout estilo documento profissional)
 model FichaTecnica {
   id                String   @id @default(cuid())
+  organizationId    String
   nome              String
   categoria         String   @default("Geral")
   rendimento        Float
   unidadeRendimento String   @default("porções")
+  descricao         String   @default("")
+  tempoPreparo      String   @default("") // ex.: "12 horas", "45 min"
+  pesoTotal         Float    @default(0) // em gramas
+  utensilios        String   @default("")
   modoPreparo       String   @default("")
   validadeHoras     Int      @default(24)
   observacoes       String   @default("")
@@ -37,9 +74,12 @@ model FichaTecnica {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   itens        ItemFicha[]
   precificacao Precificacao?
   etiquetas    EtiquetaValidade[]
+
+  @@index([organizationId])
 }
 
 /// Item (insumo + quantidade) de uma ficha técnica
@@ -74,18 +114,22 @@ model Precificacao {
 
 /// Etiqueta de validade para produtos / preparos
 model EtiquetaValidade {
-  id            String   @id @default(cuid())
-  fichaId       String?
-  nomeProduto   String
-  lote          String
-  dataProducao  DateTime
-  dataValidade  DateTime
-  responsavel   String
-  armazenamento String   @default("Refrigerado")
-  observacoes   String   @default("")
-  quantidade    Int      @default(1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String
+  fichaId        String?
+  nomeProduto    String
+  lote           String
+  dataProducao   DateTime
+  dataValidade   DateTime
+  responsavel    String
+  armazenamento  String   @default("Refrigerado")
+  observacoes    String   @default("")
+  quantidade     Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  ficha FichaTecnica? @relation(fields: [fichaId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ficha        FichaTecnica? @relation(fields: [fichaId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
 }

@@ -1,21 +1,46 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
-import { formatCurrency } from "@/lib/format";
+import { FichasList } from "@/components/FichasList";
 import { custoInsumos, custoPorPorcao } from "@/lib/calculations";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ficha Técnica" };
 
 export default async function FichasPage() {
+  const session = await auth();
+  if (!session?.user?.organizationId) redirect("/login");
+  const orgId = session.user.organizationId;
+
   const fichas = await prisma.fichaTecnica.findMany({
-    where: { ativo: true },
+    where: { ativo: true, organizationId: orgId },
     include: {
       itens: { include: { insumo: true } },
       precificacao: true,
-      _count: { select: { etiquetas: true } },
     },
     orderBy: { nome: "asc" },
+  });
+
+  const items = fichas.map((ficha) => {
+    const itens = ficha.itens.map((i) => ({
+      quantidade: i.quantidade,
+      perdaPercentual: i.perdaPercentual,
+      custoUnitario: i.insumo.custoUnitario,
+    }));
+    const custo = custoInsumos(itens);
+    return {
+      id: ficha.id,
+      nome: ficha.nome,
+      categoria: ficha.categoria,
+      rendimento: ficha.rendimento,
+      unidadeRendimento: ficha.unidadeRendimento,
+      itensCount: ficha.itens.length,
+      custo,
+      custoPorPorcao: custoPorPorcao(custo, ficha.rendimento),
+      preco: ficha.precificacao?.precoPraticado ?? null,
+    };
   });
 
   return (
@@ -30,65 +55,19 @@ export default async function FichasPage() {
         <div className="dh-animate-in-delay-1 rounded-2xl border border-dashed border-dh-line bg-white/70 px-6 py-16 text-center">
           <p className="font-display text-xl text-dh-ink">Nenhuma ficha ainda</p>
           <p className="mt-2 text-dh-muted">
-            Crie a primeira ficha técnica para começar a precificar e etiquetar.
+            Cadastre insumos e depois crie a primeira ficha técnica.
           </p>
-          <Link href="/fichas/nova" className="btn btn-primary mt-6">
-            Criar ficha
-          </Link>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link href="/insumos" className="btn btn-secondary">
+              Gerenciar insumos
+            </Link>
+            <Link href="/fichas/nova" className="btn btn-primary">
+              Criar ficha
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="dh-animate-in-delay-1 overflow-hidden rounded-2xl border border-dh-line bg-dh-elevated">
-          <div className="hidden grid-cols-12 gap-2 border-b border-dh-line bg-dh-surface/80 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-dh-muted sm:grid">
-            <div className="col-span-4">Produto</div>
-            <div className="col-span-2">Categoria</div>
-            <div className="col-span-2">Rendimento</div>
-            <div className="col-span-2">Custo</div>
-            <div className="col-span-2">Preço</div>
-          </div>
-          <ul>
-            {fichas.map((ficha) => {
-              const itens = ficha.itens.map((i) => ({
-                quantidade: i.quantidade,
-                perdaPercentual: i.perdaPercentual,
-                custoUnitario: i.insumo.custoUnitario,
-              }));
-              const custo = custoInsumos(itens);
-              const porPorcao = custoPorPorcao(custo, ficha.rendimento);
-              return (
-                <li key={ficha.id} className="border-b border-dh-line last:border-0">
-                  <Link
-                    href={`/fichas/${ficha.id}`}
-                    className="grid grid-cols-1 gap-1 px-4 py-4 transition-colors hover:bg-dh-sage-soft/40 sm:grid-cols-12 sm:items-center sm:gap-2"
-                  >
-                    <div className="sm:col-span-4">
-                      <p className="font-medium text-dh-ink">{ficha.nome}</p>
-                      <p className="text-xs text-dh-muted sm:hidden">
-                        {ficha.categoria} · {ficha.itens.length} insumos
-                      </p>
-                    </div>
-                    <div className="hidden text-sm text-dh-ink-soft sm:col-span-2 sm:block">
-                      {ficha.categoria}
-                    </div>
-                    <div className="text-sm text-dh-ink-soft sm:col-span-2">
-                      {ficha.rendimento} {ficha.unidadeRendimento}
-                    </div>
-                    <div className="text-sm sm:col-span-2">
-                      <span className="font-medium">{formatCurrency(custo)}</span>
-                      <span className="block text-xs text-dh-muted">
-                        {formatCurrency(porPorcao)} / un.
-                      </span>
-                    </div>
-                    <div className="text-sm font-semibold text-dh-accent-deep sm:col-span-2">
-                      {ficha.precificacao
-                        ? formatCurrency(ficha.precificacao.precoPraticado)
-                        : "—"}
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <FichasList items={items} />
       )}
     </div>
   );
