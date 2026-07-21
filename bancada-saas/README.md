@@ -31,6 +31,8 @@ No painel do Supabase: **Project Settings → API**
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+Sem chaves reais, `/login` e `/app` mostram a tela de setup com o checklist.
+
 ### 2. Migration no Supabase
 
 1. Abra o **SQL Editor** do Supabase
@@ -41,6 +43,7 @@ No painel do Supabase: **Project Settings → API**
 
 ```bash
 npm install
+npm run test:calculos   # valida a lógica de custo/preço
 npm run dev
 ```
 

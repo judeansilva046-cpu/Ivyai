@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import SetupSupabase from "@/components/SetupSupabase";
 
 const cores = {
   primario: "#2E6B4F",
@@ -14,6 +15,17 @@ const cores = {
   alerta: "#B97F1B",
 };
 
+function envPronto() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  if (!url || !key) return false;
+  if (url.includes("SEU_PROJETO")) return false;
+  if (key.includes("sua_chave") || key.includes("anon_aqui")) return false;
+  if (!url.startsWith("https://")) return false;
+  if (key.length < 20) return false;
+  return true;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [modo, setModo] = useState("login");
@@ -22,6 +34,10 @@ export default function LoginPage() {
   const [erro, setErro] = useState("");
   const [info, setInfo] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  if (!envPronto()) {
+    return <SetupSupabase titulo="Configure o Supabase para entrar" />;
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
