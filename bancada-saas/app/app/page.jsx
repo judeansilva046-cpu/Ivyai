@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { supabaseConfigurado } from "@/lib/supabase/config";
 import Bancada from "@/components/Bancada";
+import SetupSupabase from "@/components/SetupSupabase";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppPage() {
+  if (!supabaseConfigurado()) {
+    return <SetupSupabase titulo="Configure o Supabase para usar o app" />;
+  }
+
   const supabase = createClient();
   const {
     data: { user },

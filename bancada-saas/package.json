@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:calculos": "node scripts/testar-calculos.mjs",
+    "supabase:configurar": "node scripts/configurar-supabase.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

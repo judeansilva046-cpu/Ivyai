@@ -18,29 +18,33 @@ SaaS para pequenos produtores de alimentos — ficha técnica, precificação e 
 
 ## Setup local
 
-### 1. Variáveis de ambiente
+### 1. Configurar Supabase (recomendado)
 
-Copie o exemplo e preencha com as chaves do seu projeto Supabase:
+Gere um access token em [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) e rode:
+
+```bash
+export SUPABASE_ACCESS_TOKEN="sbp_..."
+cd bancada-saas
+npm run supabase:configurar
+```
+
+O script cria (ou reutiliza) o projeto **bancada**, aplica `001_init.sql`, ajusta Auth e grava `.env.local`.
+
+### Alternativa manual
+
+Copie o exemplo e preencha com as chaves do painel (**Settings → API**):
 
 ```bash
 cp .env.example .env.local
 ```
 
-No painel do Supabase: **Project Settings → API**
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-### 2. Migration no Supabase
-
-1. Abra o **SQL Editor** do Supabase
-2. Cole e execute o conteúdo de `supabase/migrations/001_init.sql`
-3. Confirme que a tabela `public.fichas` existe e que o RLS está ativo
+Depois, no **SQL Editor**, execute `supabase/migrations/001_init.sql`.
 
 ### 3. Instalar e rodar
 
 ```bash
 npm install
+npm run test:calculos   # valida a lógica de custo/preço
 npm run dev
 ```
 
